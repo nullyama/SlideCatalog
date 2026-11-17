@@ -7,18 +7,15 @@
  guide.innerHTML='<summary>使い方・試作・参考資料</summary>';
  [...main.children].filter(e=>(e.matches('aside')||e.matches('section:not([id])')||e.id==='actual-sample')).forEach(e=>guide.append(e));
  main.append(guide);
+ const intro=document.createElement('details');intro.className='catalog-explainer';intro.innerHTML='<summary>見本の種類・内容について</summary>';const style=document.getElementById('style');[...style.children].filter(e=>e.tagName==='P'&&!e.id).forEach(p=>intro.append(p));style.querySelector('h2').after(intro);
  const hero=document.querySelector('.hero');hero.classList.add('compact-hero');
  const heading=hero.querySelector('h1');heading.textContent='研修スライド工房';
  hero.querySelector('.lead').textContent='見本選びから制作指示まで。工程を切り替えて、必要なものだけを表示。';
  const pager=document.createElement('div');pager.className='gallery-pager';pager.innerHTML='<button class="button button-secondary" id="page-prev">前へ</button><span id="page-status" role="status"></span><button class="button button-secondary" id="page-next">次へ</button>';
  document.getElementById('styles').after(pager);
- let page=0;let pageSize=window.innerWidth<=680?6:12;
- const originalFilter=filterDesigns;
- const paginate=()=>{const cards=[...document.querySelectorAll('.design-card')];const found=cards.filter(e=>e.dataset.matched==='yes');const pages=Math.max(1,Math.ceil(found.length/pageSize));page=Math.max(0,Math.min(page,pages-1));cards.forEach(e=>e.hidden=true);found.slice(page*pageSize,(page+1)*pageSize).forEach(e=>e.hidden=false);document.getElementById('page-status').textContent=`${page+1} / ${pages}ページ · ${found.length}候補`;document.getElementById('page-prev').disabled=page===0;document.getElementById('page-next').disabled=page>=pages-1;};
- filterDesigns=()=>{originalFilter();document.querySelectorAll('.design-card').forEach(e=>e.dataset.matched=e.hidden?'no':'yes');page=0;paginate();};
- ['purpose','design-search'].forEach(id=>{document.getElementById(id).removeEventListener('input',originalFilter);document.getElementById(id).addEventListener('input',()=>filterDesigns());});document.querySelectorAll('[name=tag]').forEach(e=>{e.removeEventListener('change',originalFilter);e.addEventListener('change',()=>filterDesigns());});window.addEventListener('resize',()=>{const size=window.innerWidth<=680?6:12;if(size!==pageSize){pageSize=size;page=0;paginate();}});
- document.getElementById('page-prev').onclick=()=>{page--;paginate();document.getElementById('styles').scrollIntoView({block:'start'});};
- document.getElementById('page-next').onclick=()=>{page++;paginate();document.getElementById('styles').scrollIntoView({block:'start'});};
+ document.getElementById('page-prev').onclick=()=>{galleryPage--;paginateDesigns();document.getElementById('styles').scrollIntoView({block:'start'});};
+ document.getElementById('page-next').onclick=()=>{galleryPage++;paginateDesigns();document.getElementById('styles').scrollIntoView({block:'start'});};
+ window.addEventListener('resize',paginateDesigns);
  const rec=document.getElementById('recommend-text').closest('aside')||document.getElementById('recommend-text').parentElement;const recDetails=document.createElement('details');recDetails.className='recommend-disclosure';recDetails.innerHTML='<summary>目的をざっくり伝えて、おすすめを探す</summary>';rec.before(recDetails);recDetails.append(rec);
  const tags=document.getElementById('tags');const detail=document.createElement('details');detail.className='tag-disclosure';detail.innerHTML='<summary>タグでさらに絞る</summary>';tags.before(detail);detail.append(tags);
  function show(id,focus=false){if(!views.includes(id))return;views.forEach(v=>document.getElementById(v).hidden=v!==id);nav.querySelectorAll('a').forEach(a=>{const active=a.hash==='#'+id;a.setAttribute('aria-current',active?'step':'false');});if(focus){const h=document.getElementById(id).querySelector('h2');h.tabIndex=-1;h.focus({preventScroll:true});nav.scrollIntoView({block:'start'});}}
