@@ -12,6 +12,8 @@
 
 このサイト自体はスライドやPPTXを生成しません。おすすめの選定はキーワード照合です。
 
+曖昧な希望を相談しながら整理したいときは、[スライド壁打ち・構成設計](skills/plan-slides-dialogue/SKILL.md)を対応するAIに読み込ませて使えます。
+
 研修の構成を詰めたいときは、[日本語研修スライド設計スキル](skills/design-japanese-training/SKILL.md)も使えます。
 
 ## 手元で動かす
