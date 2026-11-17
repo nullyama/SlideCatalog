@@ -28,4 +28,4 @@ python -m http.server 8000
 
 ## ライセンス
 
-[LICENSE](LICENSE)を参照してください。紹介している外部サービス・スキルには、それぞれの利用条件が適用されます。
+現行版は[MIT License](LICENSE)です。外部資料と過去版の扱いは[素材の由来](PROVENANCE.md)を参照してください。
