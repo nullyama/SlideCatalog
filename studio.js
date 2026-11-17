@@ -1,26 +1,28 @@
 /* Local-only authoring controls. No model calls, uploads, or external requests. */
 (() => {
- const form=document.createElement('section');form.className='studio-controls';form.setAttribute('aria-label','簡易設定');
- form.innerHTML=`<div class="studio-heading"><h3>まずはここだけ</h3><p>題材と色を変え、見本を自分の研修に近づけます。</p></div><div class="studio-inputs"><label>研修の題材<input class="control" id="preview-topic" maxlength="28" placeholder="例：生成AIを安全に使う"></label><label>背景<input type="color" id="preview-bg" value="#f5f9fc"></label><label>文字<input type="color" id="preview-ink" value="#1e536e"></label><label>補助色<input type="color" id="preview-tint" value="#d9eaf3"></label><label class="palette-toggle"><input type="checkbox" id="custom-palette"> この配色を使う</label></div><p class="metadata">題材は表紙と見本の見出しに反映。本文は構図を比べるための架空例です。内容を自動生成する機能ではありません。</p><p id="contrast-warning" role="status" class="metadata"></p><div class="actions"><a class="button" href="#settings" id="quick-settings">対象・目標を設定する</a><button class="button button-secondary" id="compare-open" disabled>比較する（0 / 3）</button><button class="button button-secondary" id="compare-clear">比較を解除</button></div>`;
- const section=document.getElementById('style');section.querySelector('h2').after(form);
- let prefs={};try{prefs=JSON.parse(localStorage.getItem('slide-preview-v1')||'{}')}catch{}
+ const form=document.querySelector('.studio-controls');
+ const prefs=catalogState.preview;
  const topic=document.getElementById('preview-topic');topic.value=prefs.topic||document.getElementById('topic').value;
- ['bg','ink','tint'].forEach(k=>{if(/^#[0-9a-f]{6}$/i.test(prefs[k]||''))document.getElementById('preview-'+k).value=prefs[k]});document.getElementById('custom-palette').checked=!!prefs.custom;
- const baseSample=sample,baseCover=coverSample,baseSpec=designSpec;
- const palette=d=>document.getElementById('custom-palette').checked?{...d,bg:document.getElementById('preview-bg').value,ink:document.getElementById('preview-ink').value,tint:document.getElementById('preview-tint').value}:d;
- sample=d=>{const x=palette(d);const label=topic.value.trim();return baseSample(label?{...x,name:label.length>22?label.slice(0,22)+'…':label}:x)};
- coverSample=d=>{let svg=baseCover(palette(d));const title=topic.value.trim();if(title){svg=svg.replace('安全な</text>','研修テーマ</text>').replace('情報共有</text>',esc(title.length>10?title.slice(0,10)+'…':title)+'</text>');}return svg};
- designSpec=name=>{const d=designs.find(x=>x.name===name)||designs[0],p=palette(d);let spec=baseSpec(name);spec=spec.replace(`背景 ${d.bg}、文字・強調 ${d.ink}、補助面 ${d.tint}`,`背景 ${p.bg}、文字・強調 ${p.ink}、補助面 ${p.tint}`);const svg=new DOMParser().parseFromString(sample(p),'image/svg+xml');const placements=[...svg.querySelectorAll('rect,text')].slice(1,16).map(el=>el.tagName==='rect'?`矩形 x=${el.getAttribute('x')||0}, y=${el.getAttribute('y')||0}, 幅=${el.getAttribute('width')}, 高さ=${el.getAttribute('height')}`:`文字基準 x=${el.getAttribute('x')}, y=${el.getAttribute('y')}, サイズ=${el.getAttribute('font-size')}`);return spec+'\n配置の具体仕様（基準キャンバス640×360、数値は相対拡大して使用）：\n'+placements.join('\n')+'\nプレビュー題材：'+(topic.value||'未指定')+'。見本本文は架空例であり、そのまま研修の事実として使わない。';};
+ ['bg','ink','tint'].forEach(k=>document.getElementById('preview-'+k).value=prefs[k]);document.getElementById('custom-palette').checked=prefs.custom;
  function contrast(a,b){const luminance=h=>{const v=h.slice(1).match(/../g).map(x=>parseInt(x,16)/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4);return v[0]*.2126+v[1]*.7152+v[2]*.0722};const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
- function refresh(){document.querySelectorAll('.design-card').forEach((c,i)=>{const b=c.querySelector('.sample-open');b.querySelector('svg').outerHTML=sample(designs[i]);});const p={topic:topic.value,bg:document.getElementById('preview-bg').value,ink:document.getElementById('preview-ink').value,tint:document.getElementById('preview-tint').value,custom:document.getElementById('custom-palette').checked};try{localStorage.setItem('slide-preview-v1',JSON.stringify(p))}catch{}document.getElementById('topic').value=topic.value;const ratio=Math.min(contrast(p.ink,p.bg),contrast(p.ink,p.tint));document.getElementById('contrast-warning').textContent=p.custom?`文字と背景／補助色の最小コントラスト比：${ratio.toFixed(1)}:1${ratio<4.5?'。小さな文字は読みにくくなる可能性があります。配色を見直してください。':''}`:'';generate();}
- form.querySelectorAll('input').forEach(e=>e.addEventListener('input',refresh));document.getElementById('topic').addEventListener('change',()=>{topic.value=document.getElementById('topic').value;refresh()});
- document.getElementById('quick-settings').onclick=()=>document.querySelector('.workflow-nav a[href="#settings"]').click();
- const comparison=new Set();const compare=document.createElement('dialog');compare.id='comparison-dialog';compare.innerHTML='<button class="button button-secondary" id="compare-close">閉じる</button><h2>同じ題材・同じ倍率で比較</h2><p>レイアウトの違いを確認し、下のボタンで1つを採用します。</p><div class="comparison-grid"></div>';document.body.append(compare);
+ function refresh(){
+   const p=catalogState.preview;
+   p.topic=topic.value.slice(0,28);
+   for(const k of ['bg','ink','tint'])p[k]=document.getElementById('preview-'+k).value;
+   p.custom=document.getElementById('custom-palette').checked;
+   document.getElementById('topic').value=p.topic;
+   document.querySelectorAll('.design-card').forEach((c,i)=>{c.querySelector('.sample-open svg').outerHTML=sample(designs[i]);});
+   savePreview();
+   const ratio=Math.min(contrast(p.ink,p.bg),contrast(p.ink,p.tint));
+   document.getElementById('contrast-warning').textContent=p.custom?`文字と背景／補助色の最小コントラスト比：${ratio.toFixed(1)}:1${ratio<4.5?'。小さな文字は読みにくくなる可能性があります。配色を見直してください。':''}`:'';
+   generate();
+ }
+ document.querySelectorAll('.studio-controls input,#preview-topic').forEach(e=>e.addEventListener('input',refresh));document.getElementById('topic').addEventListener('change',()=>{topic.value=document.getElementById('topic').value;refresh()});
+ const comparison=catalogState.comparison;const compare=document.getElementById('comparison-dialog');
  document.getElementById('compare-close').onclick=()=>compare.close();
  function selection(){document.getElementById('compare-open').textContent=`比較する（${comparison.size} / 3）`;document.getElementById('compare-open').disabled=comparison.size<2;document.querySelectorAll('[name=compare]').forEach(e=>e.checked=comparison.has(e.value));}
  document.querySelectorAll('.design-card').forEach((c,i)=>{const l=document.createElement('label');l.className='compare-choice';l.innerHTML=`<input type="checkbox" name="compare" value="${designs[i].id}"> 比較に追加`;c.querySelector('.actions').append(l);l.querySelector('input').onchange=e=>{if(e.target.checked){if(comparison.size>=3){e.target.checked=false;document.getElementById('compare-open').textContent='比較は3件までです';return;}comparison.add(e.target.value);}else comparison.delete(e.target.value);selection();};});
  document.getElementById('compare-clear').onclick=()=>{comparison.clear();selection()};
  document.getElementById('compare-open').onclick=()=>{const grid=compare.querySelector('.comparison-grid');grid.innerHTML=[...comparison].map(id=>{const d=designs.find(x=>x.id===id);return `<article><h3>${esc(d.id+' '+d.name)}</h3>${sample(d)}<p>${esc(d.purpose)}</p><button class="button" data-adopt="${id}">この見本を採用</button></article>`}).join('');grid.querySelectorAll('[data-adopt]').forEach(b=>b.onclick=()=>{const d=designs.find(x=>x.id===b.dataset.adopt);document.querySelectorAll('[name=style]').forEach(e=>e.checked=e.value===d.name);generate();compare.close();});compare.showModal();};
- const handoff=document.createElement('aside');handoff.className='notice';handoff.innerHTML='<strong>AIへの渡し方と、完成の確認</strong><ol><li>指示書をコピーし、ファイルを作れるAIに貼り付ける。</li><li>元資料と指定テンプレートがあれば添付する。まず代表3〜5枚だけ依頼。</li><li>内容・日本語・配色を見てから、全編を作る。</li><li>PPTXをダウンロードまたは書き出し、自分のPowerPointで開く。文字を1か所編集し、図形とノートも確認。</li><li>実際に話して所要時間を測り、保存し直して再度開く。</li></ol><p>このサイトは指示書までを作ります。PPTXの自動生成・AIへの自動送信はしません。試作はプレゼン形式で確認済みですが、PPTX書出し後の表示・操作は未検証です。</p>';
- document.getElementById('brief').append(handoff);refresh();
+ refresh();
 })();
